@@ -31,9 +31,9 @@ Featuring a MaLiLib-based configuration GUI, you can easily customize settings a
 
 | Component | Requirement |
 |---|---|
-| **Minecraft** | `1.18.2` |
+| **Minecraft** | `1.16.1` `1.18` `1.18.1` `1.18.2` `1.19.4` `1.20` `1.20.1` `1.20.6` `1.21` `1.21.1` `1.21.4` `1.21.5` `1.21.6` `1.21.7` `1.21.8` `1.21.9` `1.21.10` `1.21.11` |
 | **Fabric Loader** | `>= 0.14.0` |
-| **Fabric API** | Target version for 1.18.2 |
+| **Fabric API** | Any version |
 | **MaLiLib** | `>= 0.12.0` (Required) |
 | **ModMenu** | Optional |
 | **FFmpeg** | Must be installed on your system (in PATH or specified in config) |
