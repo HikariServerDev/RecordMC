@@ -1,0 +1,15 @@
+# Gradle build directories in subprojects
+*/build/
+*/.gradle/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Archive files
+*.zip
+
+# Logs
+*.log

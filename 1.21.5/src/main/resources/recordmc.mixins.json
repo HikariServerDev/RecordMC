@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.atsukimc.recordmc.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "GameRendererMixin",
+    "SoundManagerMixin",
+    "TranslationStorageMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
