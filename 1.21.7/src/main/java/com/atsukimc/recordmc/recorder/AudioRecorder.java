@@ -11,16 +11,25 @@ import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Minecraft内部のゲーム音声のみをWAVファイルとして録音するクラス
+ * Minecraft内部のゲーム音声（BGM、効果音、環境音）のみをPCMミックスし、
+ * 標準RIFF WAV形式のファイルとして記録するクラス。
+ *
+ * <p>設計上の特徴:
+ * <ul>
+ *   <li>外部マイクやOSの他アプリ音声を含めず、ゲーム内の純粋なオーディオのみを収録。</li>
+ *   <li>20ms（882サンプル）単位の周期でレンダリングとディスク書き込みを行い、オーディオバッファの遅延とメモリ負荷を最小化。</li>
+ *   <li>録画開始時に仮ヘッダーを書き込み、停止時にRandomAccessFileで正確なデータ長ヘッダーを確定。</li>
+ * </ul>
  */
 public class AudioRecorder {
     private static final Logger LOGGER = LogManager.getLogger("RecordMC/Audio");
-    public static final int SAMPLE_RATE = GameAudioMixer.SAMPLE_RATE; // 44100
+
+    public static final int SAMPLE_RATE = GameAudioMixer.SAMPLE_RATE; // 44100 Hz
     public static final int CHANNELS = GameAudioMixer.CHANNELS;       // 2 (Stereo)
-    public static final int BYTES_PER_SAMPLE = 2;                     // 16-bit
+    public static final int BYTES_PER_SAMPLE = 2;                     // 16-bit signed
     public static final int FRAME_SIZE = CHANNELS * BYTES_PER_SAMPLE; // 4 bytes
 
-    // 20ms あたりのフレーム数 (44100 * 0.02 = 882)
+    // 20msあたりのサンプルフレーム数 (44100 * 0.02 = 882)
     private static final int CHUNK_FRAMES = 882;
     private static final int CHUNK_BYTES = CHUNK_FRAMES * FRAME_SIZE;
 
@@ -34,32 +43,35 @@ public class AudioRecorder {
     }
 
     /**
-     * 音声録音を開始する
+     * 音声録音スレッドを起動し、WAVヘッダーの初期書き込みを開始する。
+     *
+     * @return 正常に録音が開始された場合はtrue
      */
     public boolean start() {
         try {
             recording.set(true);
             totalBytesWritten = 0;
 
-            // WAVファイルヘッダー（暫定値）を書き込み開始
+            // WAVヘッダー（暫定データ長0）を初期書き込み
             writeInitialWavHeader(outputFile);
 
-            // ミキサーの起動
+            // ゲーム内サウンドリスナー・ミキサーを起動
             GameAudioMixer.getInstance().start();
 
             captureThread = new Thread(this::recordLoop, "RecordMC-AudioCapture");
             captureThread.setDaemon(true);
             captureThread.start();
-            LOGGER.info("Game internal audio recording started");
+            LOGGER.info("Internal game audio recorder started: {}", outputFile.getAbsolutePath());
             return true;
         } catch (Throwable t) {
             LOGGER.error("Failed to start audio recording", t);
+            recording.set(false);
             return false;
         }
     }
 
     /**
-     * 音声録音ループ（バックグラウンドスレッドでMinecraftサウンドを20ms周期でミックスして書き込み）
+     * 20ms周期でGameAudioMixerからPCMサンプルを取得し、ファイルへ順次追記するループ。
      */
     private void recordLoop() {
         byte[] chunkBuffer = new byte[CHUNK_BYTES];
@@ -69,7 +81,6 @@ public class AudioRecorder {
             long nextTickTime = System.nanoTime();
 
             while (recording.get()) {
-                // GameAudioMixer から 882フレーム (20ms) 分のPCMデータをレンダリング
                 GameAudioMixer.getInstance().renderSamples(CHUNK_FRAMES, chunkBuffer);
 
                 fos.write(chunkBuffer, 0, CHUNK_BYTES);
@@ -83,18 +94,19 @@ public class AudioRecorder {
                     try {
                         Thread.sleep(sleepMs, sleepNs);
                     } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         break;
                     }
                 }
             }
             fos.flush();
         } catch (Exception e) {
-            LOGGER.error("Error writing audio data", e);
+            LOGGER.error("Exception in audio recording loop", e);
         }
     }
 
     /**
-     * 音声録音を停止し、WAVヘッダーを確定する
+     * 音声録音スレッドを停止し、WAVファイルヘッダーのデータ長フィールドを確定する。
      */
     public void stop() {
         if (!recording.compareAndSet(true, false)) {
@@ -107,17 +119,18 @@ public class AudioRecorder {
             captureThread.interrupt();
             try {
                 captureThread.join(1000);
-            } catch (InterruptedException ignored) {
+            } catch (InterruptedException e) {
+                LOGGER.debug("Interrupted while waiting for audio capture thread to terminate");
+                Thread.currentThread().interrupt();
             }
         }
 
-        // WAVファイルのRIFFサイズとDataサイズを更新
         finalizeWavHeader(outputFile, totalBytesWritten);
-        LOGGER.info("Game audio recording stopped. Total bytes: {}", totalBytesWritten);
+        LOGGER.info("Internal game audio recording stopped. Written {} bytes to {}", totalBytesWritten, outputFile.getName());
     }
 
     /**
-     * WAVファイルのヘッダー（44バイト）を初期書き込みする
+     * 標準44バイトのPCM WAVヘッダーを書き込む。
      */
     private static void writeInitialWavHeader(File file) {
         try (FileOutputStream fos = new FileOutputStream(file)) {
@@ -126,31 +139,31 @@ public class AudioRecorder {
 
             // RIFF header
             bb.put(new byte[]{'R', 'I', 'F', 'F'});
-            bb.putInt(36); // 後で更新
+            bb.putInt(36); // データ確定時に (36 + dataBytes) で更新
             bb.put(new byte[]{'W', 'A', 'V', 'E'});
 
             // fmt chunk
             bb.put(new byte[]{'f', 'm', 't', ' '});
-            bb.putInt(16); // Chunk size (16 for PCM)
-            bb.putShort((short) 1); // Audio format (1 = PCM)
+            bb.putInt(16); // PCM形式のfmtチャンクサイズ
+            bb.putShort((short) 1); // 1 = Linear PCM
             bb.putShort((short) CHANNELS);
             bb.putInt(SAMPLE_RATE);
-            bb.putInt(SAMPLE_RATE * FRAME_SIZE); // Byte rate
-            bb.putShort((short) FRAME_SIZE); // Block align
-            bb.putShort((short) 16); // Bits per sample
+            bb.putInt(SAMPLE_RATE * FRAME_SIZE); // 1秒あたりのバイト数
+            bb.putShort((short) FRAME_SIZE);     // 1ブロックのバイト数
+            bb.putShort((short) 16);             // 1サンプルあたりのビット数
 
             // data chunk
             bb.put(new byte[]{'d', 'a', 't', 'a'});
-            bb.putInt(0); // 後で更新
+            bb.putInt(0); // 録音完了時に実サイズへ更新
 
             fos.write(header);
         } catch (Exception e) {
-            LOGGER.error("Failed to write initial WAV header", e);
+            LOGGER.error("Failed to write initial WAV header for {}", file.getAbsolutePath(), e);
         }
     }
 
     /**
-     * WAVファイルのサイズフィールドを修正してヘッダーを確定する
+     * 録音完了後、実際の書き込みバイト数に合わせてRIFFサイズおよびdataチャンクサイズを上書き更新する。
      */
     private static void finalizeWavHeader(File file, long dataBytes) {
         if (!file.exists() || dataBytes <= 0) {
@@ -166,7 +179,7 @@ public class AudioRecorder {
             raf.seek(40);
             raf.write(intToLittleEndian(clampedDataBytes));
         } catch (Exception e) {
-            LOGGER.error("Failed to finalize WAV header", e);
+            LOGGER.error("Failed to finalize WAV header for {}", file.getAbsolutePath(), e);
         }
     }
 

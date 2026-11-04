@@ -8,9 +8,9 @@
 
 ### What is RecordMC?
 
-**RecordMC** is a client-side screen recording mod for Minecraft Java Edition (Fabric).
+**RecordMC** is a lightweight, client-side screen recording mod for Minecraft Java Edition (Fabric).
 
-It allows you to record gameplay videos directly from inside Minecraft with a single keypress without requiring heavy external recording software like OBS. Featuring internal audio recording and asynchronous OpenGL PBO frame capture, it delivers clean, high-performance recording. Once recording stops, the **video file is automatically copied to your OS clipboard**, ready for instant pasting (`Ctrl + V`) into Discord, Slack, social media, or file explorers.
+It allows you to record crisp, high-framerate gameplay directly from within Minecraft with a single hotkey press, without running heavy external broadcasting tools like OBS. Built with OpenGL Pixel Buffer Objects (PBO) for asynchronous frame capture, it minimizes impact on in-game performance. Internal Minecraft sound is captured cleanly without picking up external desktop audio or microphone noise. Upon stopping, the **completed video file is automatically copied to your OS clipboard**, ready for instant pasting (`Ctrl + V`) into Discord, Slack, web browsers, or file managers.
 
 ### Supported versions
 
@@ -35,32 +35,42 @@ It allows you to record gameplay videos directly from inside Minecraft with a si
 | 1.18 | `recordmc-1.0.0+1.18.jar` | 0.14.22 or newer | 17 or newer |
 | 1.16.1 | `recordmc-1.0.0+1.16.1.jar` | 0.14.22 or newer | 8 or newer |
 
+### Requirements & Dependencies
+
+- **Fabric API**: Required for all supported versions.
+- **MaLiLib**: Required for in-game configuration GUI and hotkey handling.
+- **FFmpeg**: Must be available on your system.
+  - **Linux (Ubuntu / Debian):** `sudo apt update && sudo apt install -y ffmpeg`
+  - **Linux (Arch):** `sudo pacman -S ffmpeg`
+  - **macOS:** `brew install ffmpeg`
+  - **Windows:** Download `ffmpeg.exe` from the official website and add it to your system `PATH`, or set its full path in RecordMC's config GUI.
+
 ### Installation
 
-- Put the JAR and required dependency mods (`fabric-api`, `malilib`) in your client's `mods` folder.
+- Download the matching version JAR and place it inside your Minecraft client's `mods` directory alongside **Fabric API** and **MaLiLib**.
 - RecordMC is a **client-side only** mod. Dedicated servers do **not** need it.
 
 ### How to use it
 
-- **Start / Stop Recording**: Press `F9` (default) to start or stop recording.
-- **Open Config GUI**: Press `H + R` (default) or access via ModMenu to customize settings, keybindings, FPS, quality, and output formats.
+- **Start / Stop Recording**: Press `F9` (default). A notification and sound will confirm the action.
+- **Open Config Menu**: Press `H + R` (default) or use ModMenu to open the settings GUI. You can adjust framerate (1–240 FPS), quality factor (CRF), encoding preset, output container, and hotkeys.
 
 ### What it does
 
-- **Single-Key In-Game Recording**: Start and stop high-performance screen recording with a single keypress.
-- **Full Screen & GUI Capture**: Records everything visible on screen, including HUD, chat, inventory, chests, and open menus.
-- **Clean Game Audio**: Records internal Minecraft game audio (BGM, sound effects, ambient sounds) clearly.
-- **Multiple Output Formats**: Select your preferred output container (MP4, MOV, MKV, WebM) directly from the config GUI (Default: `mp4`).
-- **In-Game REC Indicator**: Displays a blinking red indicator (`● REC`) and elapsed time counter while recording.
-- **Automatic Clipboard Copy**: Finished video files are automatically copied to your OS clipboard upon completion for instant pasting (`Ctrl + V`).
-- **Automatic Encoder Fallback**: Dynamically detects available encoders (`libx264`, `h264_nvenc`, `h264_vaapi`, `mpeg4`) to ensure recording works out-of-the-box even in sandboxed environments like Flatpak.
-- **Multi-Language Support**: Fully localized in 14 native languages with automatic related-language fallback.
+- **Single-Key Recording**: Toggle recording instantly without leaving fullscreen or opening external windows.
+- **Full Screen & GUI Capture**: Records HUD, chat, inventory, chests, and open interfaces exactly as you see them.
+- **Clean Game Audio**: Records pure Minecraft sound effects, background music, and ambient noise.
+- **Multiple Output Formats**: Choose between MP4, MOV, MKV, and WebM (Default: `mp4`).
+- **In-Game REC Indicator**: Shows a blinking red mark (`● REC`) and live elapsed timer in the top-right corner during recording.
+- **Automatic Clipboard Copy**: Once recording finishes, the video file is automatically placed into your system clipboard for quick pasting.
+- **Automatic Encoder Fallback**: Dynamically probes and selects the best available video encoder (`libx264` -> `h264_nvenc` -> `h264_vaapi` -> `mpeg4`), ensuring reliable recording even in restricted Flatpak or sandbox environments.
+- **Multi-Language Support**: Fully localized in 14 native languages with intelligent related-group fallback.
 
 ### Good to know
 
-- **FFmpeg Requirement**: RecordMC uses FFmpeg under the hood. Make sure `ffmpeg` is installed and accessible in your system PATH, or specify the path to its executable in the config GUI.
-- **Performance**: Uses OpenGL Pixel Buffer Objects (PBO) for asynchronous frame capture, minimizing impact on game FPS during recording.
-- **Video Storage**: Videos are saved to `<gameDir>/video/` by default. You can change this to any custom folder in the configuration.
+- **FFmpeg Detection**: RecordMC automatically detects FFmpeg from `PATH` or standard installation directories. If your binary is installed elsewhere, enter the path under `Generic` -> `customFfmpegPath`.
+- **Output Directory**: Recorded files are saved to `<gameDir>/video/` by default. You can customize the save directory in settings.
+- **Encoder Behavior**: If using `mp4`, `mov`, or `mkv`, video streams are multiplexed without re-encoding (`copy`), finishing the final file in milliseconds.
 
 ### License
 
@@ -72,9 +82,9 @@ This project is licensed under the **GNU Lesser General Public License v3.0 (LGP
 
 ### RecordMCとは？
 
-**RecordMC** は、Minecraftのゲーム内からワンキーで手軽に画面録画を行えるクライアントサイドModです。
+**RecordMC** は、Minecraftのゲーム内からワンキーで手軽に画面録画を行える軽量なクライアントサイドModです。
 
-外部の録画ソフト（OBSなど）を立ち上げることなく、Minecraft内部の純粋なゲーム音とともにプレイ画面全体を高画質かつ軽量にキャプチャ・保存できます。録画完了後は**動画ファイルが自動でOSのクリップボードにコピーされる**ため、DiscordやSNS等に `Ctrl + V` で即座に共有できます。
+外部の録画ソフトウェア（OBS等）を起動することなく、ゲームプレイ画面全体を高画質かつ低負荷でキャプチャ・保存できます。非同期OpenGL PBO（Pixel Buffer Object）キャプチャを採用しているため、録画中のゲームフレームレートの低下を最小限に抑えます。マイクや外部アプリの音を拾わず、Minecraft内部の純粋なゲーム音のみをクリアに収録します。録画完了後は**生成された動画ファイルが自動でOSのクリップボードにコピーされる**ため、DiscordやSNS、Webブラウザへ `Ctrl + V` で即座に共有できます。
 
 ### 対応バージョン
 
@@ -99,32 +109,42 @@ This project is licensed under the **GNU Lesser General Public License v3.0 (LGP
 | 1.18 | `recordmc-1.0.0+1.18.jar` | 0.14.22以上 | 17以上 |
 | 1.16.1 | `recordmc-1.0.0+1.16.1.jar` | 0.14.22以上 | 8以上 |
 
+### 必要環境・前提Mod
+
+- **Fabric API**: 各バージョン対応版が必須です。
+- **MaLiLib**: 設定GUIおよびホットキー管理のため必須です。
+- **FFmpeg**: システムにインストールされている必要があります。
+  - **Linux (Ubuntu / Debian):** `sudo apt update && sudo apt install -y ffmpeg`
+  - **Linux (Arch):** `sudo pacman -S ffmpeg`
+  - **macOS:** `brew install ffmpeg`
+  - **Windows:** 公式サイト等から `ffmpeg.exe` をダウンロードし、システム環境変数 `PATH` に追加するか、本Modの設定画面で実行ファイルのフルパスを指定してください。
+
 ### 導入方法
 
-- クライアントの `mods` フォルダに対応するJARおよび前提Mod（`fabric-api`, `malilib`）を入れてください。
-- 本Modは**クライアント専用**です。サーバー側への導入は不要です。
+- お使いのMinecraftバージョンに対応するJARをダウンロードし、前提Mod（**Fabric API**, **MaLiLib**）とともにクライアントの `mods` フォルダに配置してください。
+- 本Modは**クライアント専用**です。専用サーバーへの導入は不要です。
 
 ### 使い方
 
-- **録画の開始 / 停止**: `F9`（デフォルト）を押すだけで録画を即座に開始・終了できます。
-- **設定メニューを開く**: `H + R`（デフォルト）または ModMenu から開き、FPS・画質・エンコーダー・出力形式・ホットキーなどを直感的にカスタマイズできます。
+- **録画の開始 / 停止**: `F9` キー（デフォルト）を押します。チャット通知と効果音で状態が切り替わります。
+- **設定メニューを開く**: `H + R` キー（デフォルト）または ModMenu から開きます。フレームレート（1〜240 FPS）、画質（CRF値）、エンコードプリセット、出力コンテナ形式、キーバインド等をカスタマイズできます。
 
 ### できること
 
-- **ワンキー録画**: `F9` を押すだけで素早く録画を開始・停止。
-- **完全な画面キャプチャ**: HUD、チャット、開いたインベントリやGUIなど、画面に映っているすべてをそのまま記録。
-- **ゲーム内音声のみを収録**: マイク音声や外部ソフトの音を拾わず、Minecraft内部の純粋なゲーム音のみをクリアに収録。
-- **多彩な出力形式**: MP4、MOV、MKV、WebM（デフォルト: `mp4`）に対応し、ボタン1つで切り替え可能。
-- **録画中インジケーター**: 画面右上に点滅する赤いマーク（`● REC`）と経過時間を表示。
-- **クリップボード自動コピー**: 録画終了後、生成された動画ファイルが自動でOSのクリップボードにコピーされ、Discord等に `Ctrl + V` で即貼り付け可能。
-- **エンコーダー自動フォールバック**: `libx264`, `h264_nvenc`, `h264_vaapi`, `mpeg4` を自動判別し、Flatpak環境などでも確実に動作。
+- **ワンキー録画**: フルスクリーンプレイ中でもゲームを中断することなく、ワンキーで即座に録画を開始・停止。
+- **完全な画面キャプチャ**: HUD、チャット、開いているインベントリやコンテナ画面など、視界に入るすべてを忠実に記録。
+- **ゲーム内音声のみを収録**: 外部ソフトの通知音や通話音を拾わず、BGM・効果音・環境音のみをクリアに収録。
+- **多彩な出力形式**: MP4、MOV、MKV、WebM（デフォルト: `mp4`）に対応し、ボタン操作で切り替え可能。
+- **録画中インジケーター**: 録画中は画面右上に点滅する赤いマーク（`● REC`）と経過時間を表示。
+- **クリップボード自動コピー**: 録画完了後、生成ファイルが自動でOSクリップボードに登録され、`Ctrl + V` で即座に貼り付け可能。
+- **エンコーダー自動フォールバック**: 起動時にエンコーダーのプローブを行い、利用可能な形式（`libx264` -> `h264_nvenc` -> `h264_vaapi` -> `mpeg4`）を自動選択。特許制限によりlibx264が同梱されないFlatpak環境等でも設定不要で動作。
 - **多言語対応**: 日本語を含む14言語のネイティブ翻訳に対応。
 
-### ご注意
+### ご注意・仕様
 
-- **FFmpegの必要性**: 録画処理にFFmpegを使用します。システムにFFmpegがインストールされている（PATHが通っている）か、設定画面でFFmpegの実行ファイルパスを指定してください。
-- **動作パフォーマンス**: OpenGL PBO（Pixel Buffer Object）による非同期キャプチャを採用しており、ゲームプレイへの負荷を最小限に抑えています。
-- **保存先**: 動画はデフォルトで `<ゲームディレクトリ>/video/` に保存されます（設定で変更可能）。
+- **FFmpegの検出**: 通常は `PATH` または標準配置ディレクトリから自動検出されます。独自の場所にインストールしている場合は、設定画面（`Generic` -> `customFfmpegPath`）でパスを指定してください。
+- **保存先ディレクトリ**: 録画ファイルはデフォルトで `<ゲームディレクトリ>/video/` に保存されます。絶対パスまたは相対パスで自由に変更可能です。
+- **結合処理**: MP4 / MOV / MKV 形式では、録画終了時に映像ストリームの再エンコードを行わず高速結合（Stream Copy）するため、数ミリ秒で保存が完了します。
 
 ### ライセンス
 

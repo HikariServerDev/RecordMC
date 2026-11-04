@@ -13,16 +13,28 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * FFmpegのプロセス起動・制御・動画結合を管理するクラス
+ * FFmpegプロセスのライフサイクル（検出・起動・エンコード・Mux結合）を管理するクラス。
+ *
+ * <p>設計上の特徴:
+ * <ul>
+ *   <li>OpenGLから読み出したRGBA生フレームを標準入力経由でFFmpegにパイプ送信し、ディスクI/O遅延を極小化。</li>
+ *   <li>Flatpak環境等のプラットフォーム制約（特許問題でlibx264が非同梱の環境）に対応するため、
+ *       起動時にダミープローブを行い、最適な動画エンコーダー（libx264 -> nvenc -> vaapi -> mpeg4）へ自動フォールバック。</li>
+ *   <li>録画完了時は映像と音声を再エンコードなし（-c:v copy）で瞬時にMux結合し、録画終了時の待ち時間を短縮。</li>
+ * </ul>
  */
 public class FFmpegManager {
     private static final Logger LOGGER = LogManager.getLogger("RecordMC/FFmpeg");
+
+    // ProcessBuilderのリダイレクト先として使用するNullデバイスファイル（Java 8〜21互換）
     private static final File NULL_FILE = new File(System.getProperty("os.name").toLowerCase().contains("win") ? "NUL" : "/dev/null");
+
     private static String cachedFfmpegPath = null;
     private static volatile String cachedVideoEncoder = null;
 
     /**
-     * 利用可能な動画エンコーダー（H.264またはフォールバック）を検出して返す
+     * 実行中の環境で正常に動作する最適な動画エンコーダーをプローブして返す。
+     * 一度検出されたエンコーダーはセッション終了までキャッシュされる。
      */
     public static String getBestVideoEncoder() {
         if (cachedVideoEncoder != null) {
@@ -34,11 +46,11 @@ public class FFmpegManager {
             return "libx264";
         }
 
-        // 優先度順にエンコーダーを検証
-        // 1. libx264 (標準CPUエンコーダー)
-        // 2. h264_nvenc (NVIDIA GPU)
-        // 3. h264_vaapi (Linux VA-API)
-        // 4. mpeg4 (Flatpak等のlibx264非同梱環境でも確実に動作するMP4互換エンコーダー)
+        // エンコーダーの優先順位:
+        // 1. libx264: 最も標準的で互換性の高いCPUエンコーダー
+        // 2. h264_nvenc: NVIDIA GPU搭載時の高速ハードウェアエンコーダー
+        // 3. h264_vaapi: Linux標準のハードウェアアクセラレーション
+        // 4. mpeg4: Flatpak (Freedesktop/KDE Runtime) 等でlibx264が非同梱の場合でも動作するMP4互換フォールバック
         String[] candidates = new String[]{"libx264", "h264_nvenc", "h264_vaapi", "mpeg4"};
         for (String encoder : candidates) {
             if (testEncoder(ffmpeg, encoder)) {
@@ -48,10 +60,14 @@ public class FFmpegManager {
             }
         }
 
+        LOGGER.warn("All video encoder probes failed. Falling back to default: libx264");
         cachedVideoEncoder = "libx264";
         return cachedVideoEncoder;
     }
 
+    /**
+     * lavfiのテストソースを用いて0.1秒のダミーエンコードを実行し、エンコーダーの実動可能性をミリ秒単位で確認する。
+     */
     private static boolean testEncoder(String ffmpeg, String encoder) {
         try {
             ProcessBuilder pb = new ProcessBuilder(
@@ -74,15 +90,16 @@ public class FFmpegManager {
                 p.destroyForcibly();
             }
         } catch (Throwable t) {
-            LOGGER.debug("Encoder test probe failed for {}: {}", encoder, t.getMessage());
+            LOGGER.debug("Encoder probe failed for '{}': {}", encoder, t.getMessage());
         }
         return false;
     }
 
     /**
-     * 利用可能なFFmpegの実行可能ファイルパスを取得する
+     * 実行可能なFFmpegバイナリのパスを検出する。
+     * ユーザー設定パス、PATH環境変数、標準的なインストール先の順に探索する。
      *
-     * @return FFmpegのパス。見つからない場合はnull
+     * @return 実行可能なFFmpegのフルパスまたはコマンド名。見つからない場合はnull
      */
     public static String getFfmpegPath() {
         String customPath = null;
@@ -90,16 +107,19 @@ public class FFmpegManager {
             if (RecordConfigs.Generic.CUSTOM_FFMPEG_PATH != null) {
                 customPath = RecordConfigs.Generic.CUSTOM_FFMPEG_PATH.getStringValue();
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            LOGGER.debug("Could not read custom FFmpeg path from config: {}", t.getMessage());
         }
 
         if (customPath != null && !customPath.trim().isEmpty()) {
             String trimmed = customPath.trim();
-            // 1. 絶対パスまたはカレントディレクトリからの相対パス
+
+            // 1. 指定パスが絶対パスまたは直接実行可能な場合
             File customFile = new File(trimmed);
             if (customFile.exists() && customFile.canExecute()) {
                 return customFile.getAbsolutePath();
             }
+
             // 2. ゲーム実行ディレクトリからの相対パス
             try {
                 net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
@@ -109,9 +129,11 @@ public class FFmpegManager {
                         return relativeFile.getAbsolutePath();
                     }
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                LOGGER.debug("Could not resolve relative FFmpeg path against runDirectory: {}", t.getMessage());
             }
-            // 3. コマンド名として実行可能かチェック
+
+            // 3. コマンド名としての実行可否チェック
             try {
                 ProcessBuilder pb = new ProcessBuilder(trimmed, "-version");
                 pb.redirectOutput(ProcessBuilder.Redirect.to(NULL_FILE));
@@ -121,8 +143,11 @@ public class FFmpegManager {
                 if (finished && process.exitValue() == 0) {
                     return trimmed;
                 }
-                if (process.isAlive()) process.destroyForcibly();
-            } catch (Throwable ignored) {
+                if (process.isAlive()) {
+                    process.destroyForcibly();
+                }
+            } catch (Throwable t) {
+                LOGGER.debug("Custom FFmpeg command verification failed for '{}': {}", trimmed, t.getMessage());
             }
         }
 
@@ -130,7 +155,7 @@ public class FFmpegManager {
             return cachedFfmpegPath;
         }
 
-        // 1. PATH環境変数の検索
+        // PATH環境変数を走査
         String pathEnv = System.getenv("PATH");
         if (pathEnv != null) {
             String isWindows = System.getProperty("os.name").toLowerCase();
@@ -144,13 +169,14 @@ public class FFmpegManager {
                             LOGGER.info("FFmpeg found in PATH: {}", cachedFfmpegPath);
                             return cachedFfmpegPath;
                         }
-                    } catch (Exception ignored) {
+                    } catch (Exception e) {
+                        LOGGER.trace("Skipping inaccessible PATH directory '{}': {}", dir, e.getMessage());
                     }
                 }
             }
         }
 
-        // 2. 一般的なインストール場所の検索
+        // 各OSの一般的なインストール先を検索
         String[] candidatePaths = new String[]{
                 "/usr/bin/ffmpeg",
                 "/usr/local/bin/ffmpeg",
@@ -164,12 +190,12 @@ public class FFmpegManager {
             File f = new File(candidate);
             if (f.isFile() && f.canExecute()) {
                 cachedFfmpegPath = f.getAbsolutePath();
-                LOGGER.info("FFmpeg found at standard path: {}", cachedFfmpegPath);
+                LOGGER.info("FFmpeg found at standard installation path: {}", cachedFfmpegPath);
                 return cachedFfmpegPath;
             }
         }
 
-        // 3. 'ffmpeg -version' コマンドで直接確認
+        // 最後のフォールバックとして 'ffmpeg -version' を直接実行
         try {
             ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-version");
             pb.redirectOutput(ProcessBuilder.Redirect.to(NULL_FILE));
@@ -180,28 +206,31 @@ public class FFmpegManager {
                 cachedFfmpegPath = "ffmpeg";
                 return cachedFfmpegPath;
             }
-            if (process.isAlive()) process.destroyForcibly();
-        } catch (Exception ignored) {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+        } catch (Exception e) {
+            LOGGER.debug("System 'ffmpeg -version' command execution failed: {}", e.getMessage());
         }
 
-        LOGGER.warn("FFmpeg not found on the system");
+        LOGGER.warn("FFmpeg executable was not found on the system");
         return null;
     }
 
     /**
-     * 映像キャプチャ用FFmpegプロセスを起動する
+     * 映像キャプチャ用のFFmpegエンコードプロセスを起動する。
      *
-     * @param width          動画幅
-     * @param height         動画高さ
-     * @param fps            フレームレート
-     * @param tempOutputFile 一時動画ファイル保存先
-     * @return 起動したProcess
-     * @throws IOException 起動失敗時
+     * @param width          キャプチャ幅（偶数に調整済みであること）
+     * @param height         キャプチャ高さ（偶数に調整済みであること）
+     * @param fps            目標フレームレート
+     * @param tempOutputFile 一時動画ファイルの保存先
+     * @return 起動したProcessインスタンス
+     * @throws IOException プロセス起動失敗時
      */
     public static Process startVideoEncodingProcess(int width, int height, int fps, File tempOutputFile) throws IOException {
         String ffmpeg = getFfmpegPath();
         if (ffmpeg == null) {
-            throw new FileNotFoundException("FFmpeg executable not found");
+            throw new FileNotFoundException("FFmpeg executable not found on the system");
         }
 
         String encoder = getBestVideoEncoder();
@@ -210,7 +239,7 @@ public class FFmpegManager {
 
         List<String> command = new ArrayList<>();
         command.add(ffmpeg);
-        command.add("-y"); // 上書き許可
+        command.add("-y");
         command.add("-f");
         command.add("rawvideo");
         command.add("-vcodec");
@@ -222,17 +251,18 @@ public class FFmpegManager {
         command.add("-r");
         command.add(String.valueOf(fps));
         command.add("-i");
-        command.add("-"); // 標準入力からフレーム受信
+        command.add("-"); // 標準入力からOpenGLのピクセルデータを受信
         command.add("-c:v");
         command.add(encoder);
 
+        // 各エンコーダーに最適なパラメータを付与
         if ("libx264".equals(encoder)) {
             command.add("-preset");
             command.add(preset != null && !preset.isEmpty() ? preset : "ultrafast");
             command.add("-crf");
             command.add(String.valueOf(crf));
         } else if ("mpeg4".equals(encoder)) {
-            // mpeg4はpreset/crfをサポートしないため、qscaleで品質制御 (2〜3が高画質)
+            // mpeg4はpreset/crfをサポートしないため、qscaleで品質を制御 (1〜31, 低いほど高品質)
             int qscale = Math.max(1, Math.min(31, (int) Math.round(crf * 31.0 / 51.0)));
             command.add("-qscale:v");
             command.add(String.valueOf(qscale));
@@ -246,8 +276,8 @@ public class FFmpegManager {
         command.add("-pix_fmt");
         command.add("yuv420p");
         command.add("-vf");
-        command.add("vflip"); // OpenGLの上下反転を補正
-        command.add("-an");   // 音声なし
+        command.add("vflip"); // OpenGLの原点(左下)と動画の原点(左上)の不一致を補正
+        command.add("-an");   // 映像専用プロセス（音声は別録音してMux時に結合）
         command.add(tempOutputFile.getAbsolutePath());
 
         LOGGER.info("Starting FFmpeg video encoder (using {}): {}", encoder, String.join(" ", command));
@@ -256,14 +286,15 @@ public class FFmpegManager {
         pb.redirectErrorStream(true);
         Process process = pb.start();
 
-        // ログ出力を別スレッドで記録（直近のログ行を保持してエラー時に出力）
+        // FFmpegの標準エラー出力を読み取り、バッファ溢れによるパイプ詰まりを防止するスレッド
         Thread loggerThread = new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    LOGGER.debug("[FFmpeg-Video] " + line);
+                    LOGGER.debug("[FFmpeg-Video] {}", line);
                 }
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                LOGGER.trace("FFmpeg video logger stream closed: {}", e.getMessage());
             }
         }, "RecordMC-FFmpeg-Logger");
         loggerThread.setDaemon(true);
@@ -273,12 +304,12 @@ public class FFmpegManager {
     }
 
     /**
-     * 録画終了時に映像と音声を高速結合 (Mux) して完成MP4を作成する
+     * 録画終了時に映像ストリームと音声ストリームを結合 (Mux) して完成動画ファイルを出力する。
      *
      * @param videoFile 一時動画ファイル
-     * @param audioFile 一時音声ファイル (nullまたは存在しない場合は映像のみ)
-     * @param finalFile 最終MP4ファイル
-     * @return 成功したかどうか
+     * @param audioFile 一時音声ファイル (nullまたは存在しない場合は映像のみ出力)
+     * @param finalFile 完成動画の保存先
+     * @return 処理が正常に完了し、有効なファイルが生成された場合はtrue
      */
     public static boolean muxVideoAndAudio(File videoFile, File audioFile, File finalFile) {
         String ffmpeg = getFfmpegPath();
@@ -287,7 +318,7 @@ public class FFmpegManager {
             return false;
         }
         if (videoFile == null || !videoFile.exists()) {
-            LOGGER.error("Muxing failed: Temporary video file does not exist ({})", videoFile != null ? videoFile.getAbsolutePath() : "null");
+            LOGGER.error("Muxing failed: Temporary video file does not exist: {}", videoFile != null ? videoFile.getAbsolutePath() : "null");
             return false;
         }
         if (videoFile.length() == 0) {
@@ -301,7 +332,7 @@ public class FFmpegManager {
         command.add("-i");
         command.add(videoFile.getAbsolutePath());
 
-        boolean hasAudio = audioFile != null && audioFile.exists() && audioFile.length() > 44; // WAVヘッダー44バイト超
+        boolean hasAudio = audioFile != null && audioFile.exists() && audioFile.length() > 44; // 有効なWAVデータが存在するか
         if (hasAudio) {
             command.add("-i");
             command.add(audioFile.getAbsolutePath());
@@ -310,16 +341,16 @@ public class FFmpegManager {
         String fileNameLower = finalFile.getName().toLowerCase();
         boolean isWebm = fileNameLower.endsWith(".webm");
         boolean isMkv = fileNameLower.endsWith(".mkv");
-        boolean isMov = fileNameLower.endsWith(".mov");
 
         if (isWebm) {
-            // WebM形式: VP9/VP8映像 + Opus音声
+            // WebM形式: VP9映像 + Opus音声
             int crf = 20;
             try {
                 if (RecordConfigs.Generic.CRF != null) {
                     crf = RecordConfigs.Generic.CRF.getIntegerValue();
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                LOGGER.debug("Could not read CRF config for WebM mux, using default 20: {}", t.getMessage());
             }
             command.add("-c:v");
             command.add("libvpx-vp9");
@@ -340,7 +371,7 @@ public class FFmpegManager {
                 command.add("-shortest");
             }
         } else {
-            // MP4 / MOV / MKV: 映像は再エンコードなしで高速コピー
+            // MP4 / MOV / MKV: 映像ストリームは再エンコードなし（copy）で超高速結合
             command.add("-c:v");
             command.add("copy");
 
@@ -353,7 +384,7 @@ public class FFmpegManager {
             }
 
             if (!isMkv) {
-                // MP4 / MOV はWeb最適化のfaststartフラグを付与
+                // MP4 / MOV はWeb再生やプレビューの即時読み込みのため+faststartフラグを付与
                 command.add("-movflags");
                 command.add("+faststart");
             }
@@ -369,19 +400,28 @@ public class FFmpegManager {
             pb.redirectErrorStream(true);
             process = pb.start();
 
-            // ログ読み取り
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    LOGGER.debug("[FFmpeg-Mux] " + line);
+                    LOGGER.debug("[FFmpeg-Mux] {}", line);
                 }
             }
 
             int exitCode = process.waitFor();
-            LOGGER.info("FFmpeg mux exited with code: {}", exitCode);
-            return exitCode == 0 && finalFile.exists() && finalFile.length() > 0;
+            if (exitCode != 0) {
+                LOGGER.error("FFmpeg mux process exited with non-zero code: {}", exitCode);
+                return false;
+            }
+
+            boolean success = finalFile.exists() && finalFile.length() > 0;
+            if (success) {
+                LOGGER.info("Final video successfully created: {} ({} bytes)", finalFile.getAbsolutePath(), finalFile.length());
+            } else {
+                LOGGER.error("FFmpeg mux exited with code 0 but final file is missing or empty: {}", finalFile.getAbsolutePath());
+            }
+            return success;
         } catch (Exception e) {
-            LOGGER.error("Failed to mux video and audio", e);
+            LOGGER.error("Failed to mux video and audio streams into final container", e);
             return false;
         } finally {
             if (process != null && process.isAlive()) {

@@ -102,7 +102,8 @@ public class ScreenRecorder {
             if (RecordConfigs.Generic.CUSTOM_VIDEO_DIR != null) {
                 customDir = RecordConfigs.Generic.CUSTOM_VIDEO_DIR.getStringValue();
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            LOGGER.debug("Could not read custom video directory from config: {}", t.getMessage());
         }
 
         if (customDir != null && !customDir.trim().isEmpty()) {
@@ -182,7 +183,8 @@ public class ScreenRecorder {
             if (RecordConfigs.Generic.VIDEO_FORMAT != null) {
                 format = (com.atsukimc.recordmc.config.VideoFormat) RecordConfigs.Generic.VIDEO_FORMAT.getOptionListValue();
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            LOGGER.debug("Could not read video format config, defaulting to MP4: {}", t.getMessage());
         }
         String extension = (format != null) ? format.getExtension() : ".mp4";
 
@@ -256,7 +258,9 @@ public class ScreenRecorder {
                 if (videoFeedThread != null) {
                     try {
                         videoFeedThread.join(3000);
-                    } catch (InterruptedException ignored) {
+                    } catch (InterruptedException e) {
+                        LOGGER.debug("Interrupted while waiting for video feed thread to terminate");
+                        Thread.currentThread().interrupt();
                     }
                 }
 
@@ -265,7 +269,8 @@ public class ScreenRecorder {
                     try {
                         videoStdin.flush();
                         videoStdin.close();
-                    } catch (Exception ignored) {
+                    } catch (Exception e) {
+                        LOGGER.debug("Exception closing video stdin: {}", e.getMessage());
                     }
                 }
                 if (videoProcess != null) {
@@ -467,7 +472,8 @@ public class ScreenRecorder {
         if (videoStdin != null) {
             try {
                 videoStdin.close();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                LOGGER.debug("Exception closing video stdin during error cleanup: {}", e.getMessage());
             }
         }
         if (videoProcess != null && videoProcess.isAlive()) {

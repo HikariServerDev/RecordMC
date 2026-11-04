@@ -127,15 +127,15 @@ public class GameAudioMixer implements SoundInstanceListener {
         }
 
         executor.submit(() -> {
-            Resource resource = null;
             try {
-                resource = resourceManager.getResource(location);
+                Resource resource = resourceManager.getResource(location);
                 if (resource == null) {
                     callback.accept(null);
                     return;
                 }
 
-                try (InputStream is = resource.getInputStream();
+                try (Resource res = resource;
+                     InputStream is = res.getInputStream();
                      OggAudioStream stream = new OggAudioStream(is)) {
                     AudioFormat format = stream.getFormat();
                     ByteBuffer buffer = stream.getBuffer();
@@ -158,10 +158,6 @@ public class GameAudioMixer implements SoundInstanceListener {
             } catch (Exception e) {
                 LOGGER.debug("Could not load sound PCM for {}: {}", location, e.getMessage());
                 callback.accept(null);
-            } finally {
-                if (resource != null) {
-                    try { resource.close(); } catch (Exception ignored) {}
-                }
             }
         });
     }

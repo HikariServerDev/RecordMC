@@ -11,5 +11,9 @@
 # Archive files
 *.zip
 
-# Logs
+# Logs and runtime data
 *.log
+*/logs/
+logs/
+run/
+*/run/
