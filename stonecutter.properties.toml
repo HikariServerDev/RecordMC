@@ -1,0 +1,182 @@
+# RecordMC Stonecutter 集中プロパティ
+# 全18ターゲットの依存バージョンを一元定義
+
+mod.id = "recordmc"
+mod.name = "RecordMC"
+mod.group = "com.atsukimc"
+mod.version = "1.0.0"
+
+deps.fabric_loader = "0.17.3"
+deps.modmenu = "3.2.5"
+
+# ---------------------------------------------------------------- 1.16.x
+
+["1.16.1"]
+mod.mc_compat = "~1.16.1"
+mod.java = "8"
+mod.loader_min = "0.14.0"
+deps.yarn = "1.16.1+build.21"
+deps.fabric_api = "0.18.0+build.387-1.16.1"
+deps.malilib = "maven.modrinth:malilib:0.10.0-dev.21+arne.2"
+mod.malilib_min = "0.10.0-dev.21"
+
+# ---------------------------------------------------------------- 1.18.x
+
+["1.18"]
+mod.mc_compat = "~1.18"
+mod.java = "17"
+mod.loader_min = "0.14.0"
+deps.yarn = "1.18+build.1"
+deps.fabric_api = "0.44.0+1.18"
+deps.malilib = "maven.modrinth:malilib:0.11.8"
+mod.malilib_min = "0.11.8"
+
+["1.18.1"]
+mod.mc_compat = "~1.18.1"
+mod.java = "17"
+mod.loader_min = "0.14.0"
+deps.yarn = "1.18.1+build.22"
+deps.fabric_api = "0.46.6+1.18"
+deps.malilib = "maven.modrinth:malilib:0.11.8"
+mod.malilib_min = "0.11.8"
+
+["1.18.2"]
+mod.mc_compat = "~1.18.2"
+mod.java = "17"
+mod.loader_min = "0.14.0"
+deps.yarn = "1.18.2+build.3"
+deps.fabric_api = "0.77.0+1.18.2"
+deps.malilib = "maven.modrinth:malilib:0.12.0"
+mod.malilib_min = "0.12.0"
+
+# ---------------------------------------------------------------- 1.19.x
+
+["1.19.4"]
+mod.mc_compat = "~1.19.4"
+mod.java = "17"
+mod.loader_min = "0.14.0"
+deps.yarn = "1.19.4+build.2"
+deps.fabric_api = "0.87.2+1.19.4"
+deps.malilib = "maven.modrinth:malilib:0.15.4"
+mod.malilib_min = "0.15.4"
+
+# ---------------------------------------------------------------- 1.20.x
+
+["1.20"]
+mod.mc_compat = "~1.20"
+mod.java = "17"
+mod.loader_min = "0.14.0"
+deps.yarn = "1.20+build.1"
+deps.fabric_api = "0.83.0+1.20"
+deps.malilib = "maven.modrinth:malilib:0.16.3"
+mod.malilib_min = "0.16.3"
+
+["1.20.1"]
+mod.mc_compat = "~1.20.1"
+mod.java = "17"
+mod.loader_min = "0.14.0"
+deps.yarn = "1.20.1+build.10"
+deps.fabric_api = "0.92.12+1.20.1"
+deps.malilib = "maven.modrinth:malilib:0.16.3"
+mod.malilib_min = "0.16.3"
+
+["1.20.6"]
+mod.mc_compat = "~1.20.6"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.20.6+build.3"
+deps.fabric_api = "0.100.8+1.20.6"
+deps.malilib = "maven.modrinth:malilib:0.19.2"
+mod.malilib_min = "0.19.2"
+
+# ---------------------------------------------------------------- 1.21.x
+
+["1.21"]
+mod.mc_compat = "~1.21"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21+build.9"
+deps.fabric_api = "0.102.0+1.21"
+deps.malilib = "maven.modrinth:malilib:0.21.10"
+mod.malilib_min = "0.21.10"
+
+["1.21.1"]
+mod.mc_compat = "~1.21.1"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.1+build.3"
+deps.fabric_api = "0.116.17+1.21.1"
+deps.malilib = "maven.modrinth:malilib:0.21.10"
+mod.malilib_min = "0.21.10"
+
+["1.21.4"]
+mod.mc_compat = "~1.21.4"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.4+build.8"
+deps.fabric_api = "0.119.4+1.21.4"
+deps.malilib = "maven.modrinth:malilib:0.23.5"
+mod.malilib_min = "0.23.5"
+
+["1.21.5"]
+mod.mc_compat = "~1.21.5"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.5+build.1"
+deps.fabric_api = "0.128.2+1.21.5"
+deps.malilib = "maven.modrinth:malilib:0.24.3"
+mod.malilib_min = "0.24.3"
+
+["1.21.6"]
+mod.mc_compat = "~1.21.6"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.6+build.1"
+deps.fabric_api = "0.128.2+1.21.6"
+deps.malilib = "maven.modrinth:malilib:0.25.7"
+mod.malilib_min = "0.25.7"
+
+["1.21.7"]
+mod.mc_compat = "~1.21.7"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.7+build.8"
+deps.fabric_api = "0.129.0+1.21.7"
+deps.malilib = "maven.modrinth:malilib:0.25.7"
+mod.malilib_min = "0.25.7"
+
+["1.21.8"]
+mod.mc_compat = "~1.21.8"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.8+build.1"
+deps.fabric_api = "0.136.1+1.21.8"
+deps.malilib = "maven.modrinth:malilib:0.25.7"
+mod.malilib_min = "0.25.7"
+
+["1.21.9"]
+mod.mc_compat = "~1.21.9"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.9+build.1"
+deps.fabric_api = "0.134.1+1.21.9"
+deps.malilib = "maven.modrinth:malilib:0.26.8"
+mod.malilib_min = "0.26.8"
+
+["1.21.10"]
+mod.mc_compat = "~1.21.10"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.10+build.3"
+deps.fabric_api = "0.138.4+1.21.10"
+deps.malilib = "maven.modrinth:malilib:0.26.8"
+mod.malilib_min = "0.26.8"
+
+["1.21.11"]
+mod.mc_compat = "~1.21.11"
+mod.java = "21"
+mod.loader_min = "0.15.10"
+deps.yarn = "1.21.11+build.6"
+deps.fabric_api = "0.141.6+1.21.11"
+deps.malilib = "maven.modrinth:malilib:0.27.19"
+mod.malilib_min = "0.27.19"
