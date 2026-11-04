@@ -72,6 +72,26 @@ It allows you to record crisp, high-framerate gameplay directly from within Mine
 - **Output Directory**: Recorded files are saved to `<gameDir>/video/` by default. You can customize the save directory in settings.
 - **Encoder Behavior**: If using `mp4`, `mov`, or `mkv`, video streams are multiplexed without re-encoding (`copy`), finishing the final file in milliseconds.
 
+### Building from Source
+
+This project uses [Stonecutter](https://stonecutter.kikugie.dev/) to build every supported Minecraft version from a single unified source tree. Java 21 is sufficient to compile all versions.
+
+- **Build all versions:**
+  ```bash
+  ./gradlew chiseledBuild
+  ```
+  Generated JARs will be collected into `build/libs/1.0.0/`.
+
+- **Build a single version:**
+  ```bash
+  ./gradlew "1.18.2:build"
+  ```
+
+- **Verify built JARs:**
+  ```bash
+  python3 scripts/verify-jars.py
+  ```
+
 ### License
 
 This project is licensed under the **GNU Lesser General Public License v3.0 (LGPL-3.0)**.
@@ -145,6 +165,26 @@ This project is licensed under the **GNU Lesser General Public License v3.0 (LGP
 - **FFmpegの検出**: 通常は `PATH` または標準配置ディレクトリから自動検出されます。独自の場所にインストールしている場合は、設定画面（`Generic` -> `customFfmpegPath`）でパスを指定してください。
 - **保存先ディレクトリ**: 録画ファイルはデフォルトで `<ゲームディレクトリ>/video/` に保存されます。絶対パスまたは相対パスで自由に変更可能です。
 - **結合処理**: MP4 / MOV / MKV 形式では、録画終了時に映像ストリームの再エンコードを行わず高速結合（Stream Copy）するため、数ミリ秒で保存が完了します。
+
+### ソースコードからのビルド
+
+本プロジェクトは [Stonecutter](https://stonecutter.kikugie.dev/) を採用しており、単一のソースツリーから全バージョンのJARを一括ビルドできます。JDK 21がインストールされていれば、全バージョンをビルド可能です。
+
+- **全バージョンの一括ビルド:**
+  ```bash
+  ./gradlew chiseledBuild
+  ```
+  生成されたJARファイルは `build/libs/1.0.0/` に集約されます。
+
+- **特定バージョンの個別ビルド:**
+  ```bash
+  ./gradlew "1.18.2:build"
+  ```
+
+- **生成JARの検証:**
+  ```bash
+  python3 scripts/verify-jars.py
+  ```
 
 ### ライセンス
 

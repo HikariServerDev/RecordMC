@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 各ターゲットのバイトコード出力は options.release で 8 / 17 / 21 に切り替えるため、
+      # JDK は最新の 21 があれば足りる。
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg
+
+      - name: Grant execute permission to gradlew
+        run: chmod +x ./gradlew
+
+      # settings.gradle.kts に列挙した全 Minecraft バージョンをビルドする
+      - name: Build all Minecraft versions
+        run: ./gradlew chiseledBuild
+
+      # ビルドが通っただけでは mixin や fabric.mod.json が正しいとは限らないため構造・メタデータを検証する
+      - name: Verify built jars
+        run: python scripts/verify-jars.py
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recordmc-build-artifacts
+          path: build/libs/*/*.jar
+          retention-days: 7
