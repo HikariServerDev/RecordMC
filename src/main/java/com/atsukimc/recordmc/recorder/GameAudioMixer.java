@@ -1,5 +1,20 @@
 package com.atsukimc.recordmc.recorder;
 
+//? if >=26.1 {
+/*import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.sounds.JOrbisAudioStream;
+import net.minecraft.client.resources.sounds.Sound;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.sounds.SoundEventListener;
+import net.minecraft.client.sounds.WeighedSoundEvents;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
+*///?} else {
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.sound.OggAudioStream;
@@ -13,6 +28,7 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+//?}
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,7 +47,11 @@ import java.util.concurrent.Executors;
 /**
  * Minecraftのゲーム内音声のみをキャプチャ・合成するソフトウェアオーディオミキサー
  */
+//? if >=26.1 {
+/*public class GameAudioMixer implements SoundEventListener {
+*///?} else {
 public class GameAudioMixer implements SoundInstanceListener {
+//?}
     private static final Logger LOGGER = LogManager.getLogger("RecordMC/Mixer");
     private static final GameAudioMixer INSTANCE = new GameAudioMixer();
 
@@ -68,12 +88,81 @@ public class GameAudioMixer implements SoundInstanceListener {
         LOGGER.info("Game audio mixer stopped");
     }
 
-    @Override
-    //? if >=1.20.6 {
-    /*public void onSoundPlayed(SoundInstance soundInstance, WeightedSoundSet soundSet, float range) {
+    //? if >=26.1 {
+    /*@Override
+    public void onPlaySound(SoundInstance soundInstance, WeighedSoundEvents soundSet, float range) {
+        if (!mixing || soundInstance == null) {
+            return;
+        }
+
+        Minecraft client = Minecraft.getInstance();
+        if (client == null) {
+            return;
+        }
+
+        Sound sound = soundInstance.getSound();
+        if (sound == null) {
+            return;
+        }
+
+        Identifier location = sound.getPath();
+
+        // 非同期でPCMをロード・キャッシュしてボイスに追加
+        loadPcmAsync(location, pcm -> {
+            if (pcm == null || !mixing) {
+                return;
+            }
+
+            float volume = soundInstance.getVolume();
+            float pitch = soundInstance.getPitch();
+            Vec3 pos = new Vec3(soundInstance.getX(), soundInstance.getY(), soundInstance.getZ());
+            boolean relative = soundInstance.isRelative() || soundInstance.getAttenuation() == SoundInstance.Attenuation.NONE;
+            boolean looping = soundInstance.isLooping();
+            SoundSource category = soundInstance.getSource();
+
+            ActiveVoice voice = new ActiveVoice(pcm, soundInstance, volume, pitch, pos, relative, looping, category);
+            activeVoices.add(voice);
+        });
+    }
+    *///?} elif >=1.20.6 {
+    /*@Override
+    public void onSoundPlayed(SoundInstance soundInstance, WeightedSoundSet soundSet, float range) {
+        if (!mixing || soundInstance == null) {
+            return;
+        }
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null) {
+            return;
+        }
+
+        Sound sound = soundInstance.getSound();
+        if (sound == null || sound == net.minecraft.client.sound.SoundManager.MISSING_SOUND) {
+            return;
+        }
+
+        Identifier location = sound.getLocation();
+
+        // 非同期でPCMをロード・キャッシュしてボイスに追加
+        loadPcmAsync(location, pcm -> {
+            if (pcm == null || !mixing) {
+                return;
+            }
+
+            float volume = soundInstance.getVolume();
+            float pitch = soundInstance.getPitch();
+            Vec3d pos = new Vec3d(soundInstance.getX(), soundInstance.getY(), soundInstance.getZ());
+            boolean relative = soundInstance.isRelative() || soundInstance.getAttenuationType() == SoundInstance.AttenuationType.NONE;
+            boolean looping = soundInstance.isRepeatable();
+            SoundCategory category = soundInstance.getCategory();
+
+            ActiveVoice voice = new ActiveVoice(pcm, soundInstance, volume, pitch, pos, relative, looping, category);
+            activeVoices.add(voice);
+        });
+    }
     *///?} else {
+    @Override
     public void onSoundPlayed(SoundInstance soundInstance, WeightedSoundSet soundSet) {
-    //?}
         if (!mixing || soundInstance == null) {
             return;
         }
@@ -111,6 +200,7 @@ public class GameAudioMixer implements SoundInstanceListener {
             activeVoices.add(voice);
         });
     }
+    //?}
 
     /**
      * OggファイルからPCMデータを非同期に読み込む
@@ -122,6 +212,49 @@ public class GameAudioMixer implements SoundInstanceListener {
             return;
         }
 
+        //? if >=26.1 {
+        /*Minecraft client = Minecraft.getInstance();
+        if (client == null) {
+            callback.accept(null);
+            return;
+        }
+
+        ResourceManager resourceManager = client.getResourceManager();
+        if (resourceManager == null) {
+            callback.accept(null);
+            return;
+        }
+
+        executor.submit(() -> {
+            try {
+                java.util.Optional<Resource> resOpt = resourceManager.getResource(location);
+                if (resOpt.isEmpty()) {
+                    callback.accept(null);
+                    return;
+                }
+                Resource resource = resOpt.get();
+                try (InputStream is = resource.open();
+                     JOrbisAudioStream stream = new JOrbisAudioStream(is)) {
+                    AudioFormat format = stream.getFormat();
+                    it.unimi.dsi.fastutil.floats.FloatArrayList list = new it.unimi.dsi.fastutil.floats.FloatArrayList();
+                    while (stream.readChunk(list::add)) {}
+
+                    float[] samples = list.toFloatArray();
+                    short[] shortSamples = new short[samples.length];
+                    for (int i = 0; i < samples.length; i++) {
+                        shortSamples[i] = (short) Mth.clamp((int) (samples[i] * 32767.0f), -32768, 32767);
+                    }
+
+                    PcmSoundData data = new PcmSoundData((int) format.getSampleRate(), format.getChannels(), shortSamples);
+                    pcmCache.put(location, data);
+                    callback.accept(data);
+                }
+            } catch (Exception e) {
+                LOGGER.debug("Could not load sound PCM for {}: {}", location, e.getMessage());
+                callback.accept(null);
+            }
+        });
+        *///?} else {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null) {
             callback.accept(null);
@@ -217,6 +350,7 @@ public class GameAudioMixer implements SoundInstanceListener {
                 callback.accept(null);
             }
         });
+        //?}
     }
 
     /**
@@ -229,6 +363,39 @@ public class GameAudioMixer implements SoundInstanceListener {
         float[] mixL = new float[frameCount];
         float[] mixR = new float[frameCount];
 
+        //? if >=26.2 {
+        /*Minecraft client = Minecraft.getInstance();
+        float masterVolume = 1.0f;
+        Vec3 listenerPos = Vec3.ZERO;
+        float listenerYaw = 0.0f;
+
+        if (client != null && client.options != null) {
+            masterVolume = client.options.getSoundSourceVolume(SoundSource.MASTER);
+            if (client.gameRenderer != null) {
+                Camera camera = client.gameRenderer.mainCamera();
+                if (camera != null) {
+                    listenerPos = camera.position();
+                    listenerYaw = camera.yaw();
+                }
+            }
+        }
+        *///?} elif >=26.1 {
+        /*Minecraft client = Minecraft.getInstance();
+        float masterVolume = 1.0f;
+        Vec3 listenerPos = Vec3.ZERO;
+        float listenerYaw = 0.0f;
+
+        if (client != null && client.options != null) {
+            masterVolume = client.options.getSoundSourceVolume(SoundSource.MASTER);
+            if (client.gameRenderer != null) {
+                Camera camera = client.gameRenderer.getMainCamera();
+                if (camera != null) {
+                    listenerPos = camera.position();
+                    listenerYaw = camera.yaw();
+                }
+            }
+        }
+        *///?} else {
         MinecraftClient client = MinecraftClient.getInstance();
         float masterVolume = 1.0f;
         Vec3d listenerPos = Vec3d.ZERO;
@@ -248,18 +415,30 @@ public class GameAudioMixer implements SoundInstanceListener {
                 }
             }
         }
+        //?}
 
         List<ActiveVoice> deadVoices = new ArrayList<>();
 
         for (ActiveVoice voice : activeVoices) {
+            //? if >=26.1 {
+            /*if (!voice.soundInstance.canPlaySound()) {
+                deadVoices.add(voice);
+                continue;
+            }
+            *///?} else {
             if (!voice.soundInstance.canPlay()) {
                 deadVoices.add(voice);
                 continue;
             }
+            //?}
 
             float catVolume = 1.0f;
             if (client != null && client.options != null) {
+                //? if >=26.1 {
+                /*catVolume = client.options.getSoundSourceVolume(voice.category);
+                *///?} else {
                 catVolume = client.options.getSoundVolume(voice.category);
+                //?}
             }
             float baseGain = masterVolume * catVolume * voice.volume;
             if (baseGain <= 0.001f) {
@@ -274,9 +453,15 @@ public class GameAudioMixer implements SoundInstanceListener {
                 rightGain = baseGain;
             } else {
                 // 3D音響の距離減衰とパンニング計算
+                //? if >=26.1 {
+                /*double dx = voice.pos.x - listenerPos.x;
+                double dy = voice.pos.y - listenerPos.y;
+                double dz = voice.pos.z - listenerPos.z;
+                *///?} else {
                 double dx = voice.pos.x - listenerPos.x;
                 double dy = voice.pos.y - listenerPos.y;
                 double dz = voice.pos.z - listenerPos.z;
+                //?}
                 double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
                 // 距離減衰（最大64ブロック）
@@ -292,7 +477,11 @@ public class GameAudioMixer implements SoundInstanceListener {
                 double relZ = -dx * Math.sin(yawRad) + dz * Math.cos(yawRad);
 
                 double angle = Math.atan2(relX, relZ);
+                //? if >=26.1 {
+                /*float pan = Mth.clamp((float) Math.sin(angle), -1.0f, 1.0f);
+                *///?} else {
                 float pan = MathHelper.clamp((float) Math.sin(angle), -1.0f, 1.0f);
+                //?}
 
                 leftGain = baseGain * atten * (float) Math.cos((pan + 1.0) * (Math.PI / 4.0));
                 rightGain = baseGain * atten * (float) Math.sin((pan + 1.0) * (Math.PI / 4.0));
@@ -326,8 +515,13 @@ public class GameAudioMixer implements SoundInstanceListener {
 
         // float [-1.0, 1.0] -> 16-bit PCM Little Endian
         for (int i = 0; i < frameCount; i++) {
+            //? if >=26.1 {
+            /*int valL = Mth.clamp((int) (mixL[i] * 32767.0f), -32768, 32767);
+            int valR = Mth.clamp((int) (mixR[i] * 32767.0f), -32768, 32767);
+            *///?} else {
             int valL = MathHelper.clamp((int) (mixL[i] * 32767.0f), -32768, 32767);
             int valR = MathHelper.clamp((int) (mixR[i] * 32767.0f), -32768, 32767);
+            //?}
 
             int byteIdx = i * 4;
             // Left
@@ -347,6 +541,24 @@ public class GameAudioMixer implements SoundInstanceListener {
         final SoundInstance soundInstance;
         final float volume;
         final float pitch;
+        //? if >=26.1 {
+        /*final Vec3 pos;
+        final boolean relative;
+        final boolean looping;
+        final SoundSource category;
+        double currentFrame = 0.0;
+
+        ActiveVoice(PcmSoundData pcm, SoundInstance soundInstance, float volume, float pitch, Vec3 pos, boolean relative, boolean looping, SoundSource category) {
+            this.pcm = pcm;
+            this.soundInstance = soundInstance;
+            this.volume = volume;
+            this.pitch = pitch;
+            this.pos = pos;
+            this.relative = relative;
+            this.looping = looping;
+            this.category = category;
+        }
+        *///?} else {
         final Vec3d pos;
         final boolean relative;
         final boolean looping;
@@ -363,5 +575,6 @@ public class GameAudioMixer implements SoundInstanceListener {
             this.looping = looping;
             this.category = category;
         }
+        //?}
     }
 }

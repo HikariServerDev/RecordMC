@@ -71,8 +71,9 @@ def main():
                 fmj = json.loads(z.read("fabric.mod.json").decode("utf-8"))
                 mixins = json.loads(z.read("recordmc.mixins.json").decode("utf-8"))
 
+                is_deobf = target.startswith("26.")
                 refmap_name = mixins.get("refmap", "recordmc.refmap.json")
-                has_refmap = refmap_name in names
+                has_refmap = (refmap_name in names) if not is_deobf else True
                 has_license = "META-INF/LICENSE" in names
                 env_ok = fmj.get("environment") == "client"
 
@@ -90,11 +91,13 @@ def main():
             if has_tests:
                 status_str += " (Tests found!)"
 
+            refmap_disp = "N/A (deobf)" if is_deobf else ("OK" if (refmap_name in names) else "MISSING")
+
             print("%-10s %-6s %-16s %-8s %-9s %s" % (
                 target,
                 java_level,
                 mc_dep,
-                "OK" if has_refmap else "MISSING",
+                refmap_disp,
                 "OK" if has_license else "MISSING",
                 status_str,
             ))

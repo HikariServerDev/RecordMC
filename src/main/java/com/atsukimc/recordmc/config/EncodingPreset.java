@@ -1,7 +1,7 @@
 package com.atsukimc.recordmc.config;
 
+import com.atsukimc.recordmc.compat.I18nCompat;
 import fi.dy.masa.malilib.config.IConfigOptionListEntry;
-import net.minecraft.client.resource.language.I18n;
 
 /**
  * FFmpegのエンコードプリセット（ボタンクリックで循環切り替え）
@@ -31,8 +31,8 @@ public enum EncodingPreset implements IConfigOptionListEntry {
 
     @Override
     public String getDisplayName() {
-        if (I18n.hasTranslation(this.translationKey)) {
-            return I18n.translate(this.translationKey);
+        if (I18nCompat.hasTranslation(this.translationKey)) {
+            return I18nCompat.translate(this.translationKey);
         }
         return this.defaultDisplayName;
     }

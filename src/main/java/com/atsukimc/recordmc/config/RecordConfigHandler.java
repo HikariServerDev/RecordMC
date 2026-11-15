@@ -5,7 +5,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import fi.dy.masa.malilib.config.ConfigUtils;
 import fi.dy.masa.malilib.config.IConfigHandler;
+//? if >=26.1 {
+/*import fi.dy.masa.malilib.util.data.json.JsonUtils;
+*///?} else {
 import fi.dy.masa.malilib.util.JsonUtils;
+//?}
 
 import java.io.File;
 
@@ -26,7 +30,11 @@ public class RecordConfigHandler implements IConfigHandler {
         File file = new File(configFile, CONFIG_FILE_NAME);
 
         if (file.exists() && file.isFile() && file.canRead()) {
+            //? if >=26.1 {
+            /*JsonElement element = JsonUtils.parseJsonFile(file.toPath());
+            *///?} else {
             JsonElement element = JsonUtils.parseJsonFile(file);
+            //?}
             if (element != null && element.isJsonObject()) {
                 JsonObject root = element.getAsJsonObject();
                 ConfigUtils.readConfigBase(root, "Generic", RecordConfigs.getGenericOptions());
@@ -47,6 +55,10 @@ public class RecordConfigHandler implements IConfigHandler {
         ConfigUtils.writeConfigBase(root, "Generic", RecordConfigs.getGenericOptions());
         ConfigUtils.writeHotkeys(root, "Hotkeys", RecordConfigs.getHotkeyOptions());
 
+        //? if >=26.1 {
+        /*JsonUtils.writeJsonToFile(root, file.toPath());
+        *///?} else {
         JsonUtils.writeJsonToFile(root, file);
+        //?}
     }
 }

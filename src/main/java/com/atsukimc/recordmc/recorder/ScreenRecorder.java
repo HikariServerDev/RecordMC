@@ -3,11 +3,18 @@ package com.atsukimc.recordmc.recorder;
 import com.atsukimc.recordmc.compat.SoundCompat;
 import com.atsukimc.recordmc.compat.TextCompat;
 import com.atsukimc.recordmc.config.RecordConfigs;
+//? if >=26.1 {
+/*import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import net.minecraft.network.chat.Component;
+*///?} else {
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+//?}
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
@@ -91,8 +98,13 @@ public class ScreenRecorder {
      * 現在有効な動画保存先ディレクトリを取得する（絶対パス・相対パスの両方に対応）
      */
     public File getEffectiveVideoDir() {
+        //? if >=26.1 {
+        /*Minecraft client = Minecraft.getInstance();
+        File baseDir = client != null && client.gameDirectory != null ? client.gameDirectory : new File(".");
+        *///?} else {
         MinecraftClient client = MinecraftClient.getInstance();
         File baseDir = client != null && client.runDirectory != null ? client.runDirectory : new File(".");
+        //?}
 
         String customDir = null;
         try {
@@ -135,12 +147,6 @@ public class ScreenRecorder {
         }
         state = State.STARTING;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null) {
-            state = State.IDLE;
-            return;
-        }
-
         // FFmpegの存在チェック
         String ffmpeg = FFmpegManager.getFfmpegPath();
         if (ffmpeg == null) {
@@ -152,9 +158,34 @@ public class ScreenRecorder {
         int fps = RecordConfigs.Generic.FPS.getIntegerValue();
 
         // フレームバッファの解像度取得（偶数サイズに丸める）
+        //? if >=26.2 {
+        /*Minecraft client = Minecraft.getInstance();
+        if (client == null) {
+            state = State.IDLE;
+            return;
+        }
+        RenderTarget fb = client.gameRenderer != null ? client.gameRenderer.mainRenderTarget() : null;
+        int width = (fb != null ? fb.width : client.getWindow().getWidth()) & ~1;
+        int height = (fb != null ? fb.height : client.getWindow().getHeight()) & ~1;
+        *///?} elif >=26.1 {
+        /*Minecraft client = Minecraft.getInstance();
+        if (client == null) {
+            state = State.IDLE;
+            return;
+        }
+        RenderTarget fb = client.getMainRenderTarget();
+        int width = (fb != null ? fb.width : client.getWindow().getWidth()) & ~1;
+        int height = (fb != null ? fb.height : client.getWindow().getHeight()) & ~1;
+        *///?} else {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null) {
+            state = State.IDLE;
+            return;
+        }
         Framebuffer fb = client.getFramebuffer();
         int width = (fb != null ? fb.textureWidth : client.getWindow().getFramebufferWidth()) & ~1;
         int height = (fb != null ? fb.textureHeight : client.getWindow().getFramebufferHeight()) & ~1;
+        //?}
 
         if (width <= 0 || height <= 0) {
             sendMessage(TextCompat.literal("§c[RecordMC] 無効な画面解像度です: " + width + "x" + height));
@@ -218,9 +249,15 @@ public class ScreenRecorder {
 
             // 開始通知 & 効果音再生
             sendMessage(TextCompat.translatable("recordmc.message.recording_started"));
+            //? if >=26.1 {
+            /*if (client.player != null) {
+                SoundCompat.playPling(client.player, 2.0f);
+            }
+            *///?} else {
             if (client.player != null) {
                 SoundCompat.playPling(client.player, 2.0f);
             }
+            //?}
             LOGGER.info("Recording started: {}x{} @ {}fps -> {}", captureWidth, captureHeight, fps, finalOutputFile.getName());
         } catch (Exception e) {
             LOGGER.error("Failed to start recording", e);
@@ -239,11 +276,18 @@ public class ScreenRecorder {
         }
         state = State.STOPPING;
 
-        MinecraftClient client = MinecraftClient.getInstance();
         sendMessage(TextCompat.translatable("recordmc.message.recording_stopping"));
+        //? if >=26.1 {
+        /*Minecraft client = Minecraft.getInstance();
         if (client != null && client.player != null) {
             SoundCompat.playPling(client.player, 1.0f);
         }
+        *///?} else {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client != null && client.player != null) {
+            SoundCompat.playPling(client.player, 1.0f);
+        }
+        //?}
 
         // バックグラウンドでエンコード終了とMuxを実行
         new Thread(() -> {
@@ -312,6 +356,16 @@ public class ScreenRecorder {
                     }
 
                     // クリックでフォルダを開くチャットメッセージ
+                    //? if >=26.1 {
+                    /*Component linkText = TextCompat.literal(finalOutputFile.getName())
+                            .withStyle(ChatFormatting.GREEN, ChatFormatting.UNDERLINE)
+                            .withStyle(style -> style.withClickEvent(TextCompat.createOpenFileClickEvent(finalOutputFile.getParentFile())));
+                    Component message = TextCompat.translatable(
+                            copied ? "recordmc.message.recording_saved_and_copied" : "recordmc.message.recording_saved",
+                            linkText
+                    ).append(" ").append(TextCompat.translatable("recordmc.message.recording_saved_click"));
+                    sendMessage(message);
+                    *///?} else {
                     Text linkText = TextCompat.literal(finalOutputFile.getName())
                             .formatted(Formatting.GREEN, Formatting.UNDERLINE)
                             .styled(style -> style.withClickEvent(TextCompat.createOpenFileClickEvent(finalOutputFile.getParentFile())));
@@ -320,6 +374,7 @@ public class ScreenRecorder {
                             linkText
                     ).append(" ").append(TextCompat.translatable("recordmc.message.recording_saved_click"));
                     sendMessage(message);
+                    //?}
                 } else {
                     LOGGER.error("Failed to create final video file");
                     sendMessage(TextCompat.literal("§c[RecordMC] 動画の保存に失敗しました。"));
@@ -356,18 +411,25 @@ public class ScreenRecorder {
         }
         lastFrameNanos = nowNanos;
 
+        //? if >=26.2 {
+        /*Minecraft client = Minecraft.getInstance();
+        if (client == null || client.gameRenderer == null || client.gameRenderer.mainRenderTarget() == null) {
+            return;
+        }
+        *///?} elif >=26.1 {
+        /*Minecraft client = Minecraft.getInstance();
+        if (client == null || client.getMainRenderTarget() == null) {
+            return;
+        }
+        *///?} else {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null) {
+        if (client == null || client.getFramebuffer() == null) {
             return;
         }
-
-        Framebuffer fb = client.getFramebuffer();
-        if (fb == null) {
-            return;
-        }
+        //?}
 
         try {
-            captureFramePBO(fb);
+            captureFramePBO();
         } catch (Exception e) {
             LOGGER.error("Error capturing frame via PBO", e);
         }
@@ -376,7 +438,7 @@ public class ScreenRecorder {
     /**
      * PBOダブルバッファを用いた非同期ピクセル読み出し
      */
-    private void captureFramePBO(Framebuffer fb) {
+    private void captureFramePBO() {
         if (!pboInitialized) {
             initPBO();
             pboInitialized = true;
@@ -428,7 +490,11 @@ public class ScreenRecorder {
     }
 
     private void cleanupPBO() {
+        //? if >=26.1 {
+        /*Minecraft client = Minecraft.getInstance();
+        *///?} else {
         MinecraftClient client = MinecraftClient.getInstance();
+        //?}
         if (client == null) {
             return;
         }
@@ -482,6 +548,18 @@ public class ScreenRecorder {
         cleanupPBO();
     }
 
+    //? if >=26.1 {
+    /*private void sendMessage(Component message) {
+        Minecraft client = Minecraft.getInstance();
+        if (client != null) {
+            client.execute(() -> {
+                if (client.player != null) {
+                    client.player.sendSystemMessage(message);
+                }
+            });
+        }
+    }
+    *///?} else {
     private void sendMessage(Text message) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client != null) {
@@ -492,4 +570,5 @@ public class ScreenRecorder {
             });
         }
     }
+    //?}
 }

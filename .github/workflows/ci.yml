@@ -12,13 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 各ターゲットのバイトコード出力は options.release で 8 / 17 / 21 に切り替えるため、
-      # JDK は最新の 21 があれば足りる。
-      - name: Setup Java 21
+      # 各ターゲットのバイトコード出力は options.release で 8 / 17 / 21 / 25 に切り替えるため、
+      # JDK は 21 と 25 をセットアップする。
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: |
+            21
+            25
 
       - name: Setup Python
         uses: actions/setup-python@v5
