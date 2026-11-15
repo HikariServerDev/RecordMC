@@ -26,7 +26,8 @@ extra["recordmcTarget"] = mapOf(
     "yarn" to propOr("deps.yarn", ""),
     "fabricApi" to prop("deps.fabric_api"),
     "malilib" to prop("deps.malilib"),
-    "modmenu" to propOr("deps.modmenu", "")
+    "modmenu" to propOr("deps.modmenu", ""),
+    "fabricApiId" to propOr("mod.fabric_api_id", "fabric-api")
 )
 
 apply(from = rootProject.file("gradle/minecraft.gradle"))

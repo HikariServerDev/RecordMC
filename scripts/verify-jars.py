@@ -80,16 +80,22 @@ def main():
                 # テスト混入チェック
                 has_tests = any(n.endswith("Test.class") for n in names)
 
+                # Fabric API 依存チェック
+                expected_fapi = "fabric" if target in ("1.16.1", "1.18", "1.18.1") else "fabric-api"
+                has_correct_fapi = fmj.get("depends", {}).get(expected_fapi) == "*"
+
             java_level = mixins.get("compatibilityLevel", "").replace("JAVA_", "")
             mc_dep = fmj.get("depends", {}).get("minecraft", "?")
 
-            is_ok = has_refmap and has_license and env_ok and not has_tests
+            is_ok = has_refmap and has_license and env_ok and not has_tests and has_correct_fapi
             if not is_ok:
                 bad.append(target)
 
             status_str = "OK" if is_ok else "NG!!"
             if has_tests:
                 status_str += " (Tests found!)"
+            if not has_correct_fapi:
+                status_str += " (Bad Fabric API dep!)"
 
             refmap_disp = "N/A (deobf)" if is_deobf else ("OK" if (refmap_name in names) else "MISSING")
 

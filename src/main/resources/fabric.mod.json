@@ -26,7 +26,7 @@
     "fabricloader": ">=${loader_min}",
     "minecraft": "${minecraft}",
     "java": ">=${java}",
-    "fabric": "*",
+    "${fabric_api_id}": "*",
     "malilib": ">=${malilib_min}"
   }
 }
