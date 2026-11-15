@@ -91,7 +91,8 @@ tasks.named("processResources") {
         minecraft: target.mcCompat,
         loader_min: target.loaderMin,
         malilib_min: target.malilibMin,
-        java: target.java
+        java: target.java,
+        fabric_api_id: target.fabricApiId
     ]
     props.each { k, v -> inputs.property(k, v) }
 
