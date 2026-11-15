@@ -1,0 +1,119 @@
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.Copy
+import org.gradle.jvm.tasks.Jar
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
+def target = project.ext.recordmcTarget
+def mc = target.minecraft
+def obfuscated = target.obfuscated.toBoolean()
+def javaRelease = target.java.toInteger()
+
+base { archivesName = target.modName }
+tasks.withType(AbstractArchiveTask).configureEach { archiveVersion = "${target.modVersion}+${mc}" }
+
+repositories {
+    mavenCentral()
+    maven {
+        url = "https://api.modrinth.com/maven"
+        name = "Modrinth"
+        content { includeGroup("maven.modrinth") }
+    }
+    maven {
+        url = "https://maven.terraformersmc.com/"
+        name = "TerraformersMC"
+    }
+    maven { url = "https://maven.fabricmc.net/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${mc}"
+    if (obfuscated) {
+        mappings "net.fabricmc:yarn:${target.yarn}:v2"
+        modImplementation "net.fabricmc:fabric-loader:${target.loader}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${target.fabricApi}"
+        modImplementation(target.malilib) { transitive = false }
+        modCompileOnly("maven.modrinth:modmenu:${target.modmenu}") { transitive = false }
+    } else {
+        implementation "net.fabricmc:fabric-loader:${target.loader}"
+        compileOnly "net.fabricmc.fabric-api:fabric-api:${target.fabricApi}"
+        compileOnly(target.malilib) { transitive = false }
+        compileOnly("maven.modrinth:modmenu:${target.modmenu}") { transitive = false }
+    }
+}
+
+// ユニットテスト (1.18.2 のみ)
+if (mc == "1.18.2") {
+    dependencies {
+        testImplementation platform("org.junit:junit-bom:5.10.2")
+        testImplementation "org.junit.jupiter:junit-jupiter"
+        testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    }
+    tasks.named("test", Test) {
+        useJUnitPlatform()
+    }
+} else {
+    sourceSets.test.java.srcDirs = []
+    sourceSets.test.resources.srcDirs = []
+}
+
+if (obfuscated) {
+    loom {
+        mixin {
+            useLegacyMixinAp = true
+            defaultRefmapName = "recordmc.refmap.json"
+        }
+        mods {
+            register("recordmc") {
+                sourceSet(sourceSets.main)
+            }
+        }
+    }
+}
+
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(javaRelease >= 25 ? 25 : 21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaRelease
+    options.encoding = "UTF-8"
+}
+
+tasks.named("processResources") {
+    def props = [
+        id: target.modId,
+        name: target.modName,
+        version: project.version.toString(),
+        minecraft: target.mcCompat,
+        loader_min: target.loaderMin,
+        malilib_min: target.malilibMin,
+        java: target.java
+    ]
+    props.each { k, v -> inputs.property(k, v) }
+
+    filesMatching("fabric.mod.json") { expand(props) }
+    filesMatching("*.mixins.json") { expand(java: "JAVA_${javaRelease}") }
+}
+
+tasks.named("jar", Jar) {
+    from(rootProject.file("LICENSE")) { into("META-INF") }
+}
+
+tasks.register("buildAndCollect", Copy) {
+    group = "build"
+    description = "jar をビルドして build/libs/<mod version>/ に集約する"
+
+    dependsOn tasks.named("build")
+    if (obfuscated) {
+        from tasks.named("remapJar").flatMap { it.archiveFile }
+        from tasks.named("remapSourcesJar").flatMap { it.archiveFile }
+    } else {
+        from tasks.named("jar").flatMap { it.archiveFile }
+        from tasks.named("sourcesJar").flatMap { it.archiveFile }
+    }
+    into rootProject.layout.buildDirectory.dir("libs/${target.modVersion}")
+}

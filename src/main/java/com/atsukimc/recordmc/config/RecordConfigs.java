@@ -1,11 +1,11 @@
 package com.atsukimc.recordmc.config;
 
+import com.atsukimc.recordmc.compat.I18nCompat;
 import com.atsukimc.recordmc.recorder.FFmpegManager;
 import com.atsukimc.recordmc.recorder.ScreenRecorder;
 import com.google.common.collect.ImmutableList;
 import fi.dy.masa.malilib.config.IConfigBase;
 import fi.dy.masa.malilib.config.options.*;
-import net.minecraft.client.resource.language.I18n;
 
 import java.io.File;
 import java.util.List;
@@ -30,8 +30,8 @@ public class RecordConfigs {
             public String getComment() {
                 String baseComment = super.getComment();
                 String detected = FFmpegManager.getFfmpegPath();
-                String effective = (detected != null) ? detected : I18n.translate("recordmc.config.status.not_detected");
-                String hint = I18n.translate("recordmc.config.comment.custom_ffmpeg_path.current", effective);
+                String effective = (detected != null) ? detected : I18nCompat.translate("recordmc.config.status.not_detected");
+                String hint = I18nCompat.translate("recordmc.config.comment.custom_ffmpeg_path.current", effective);
                 return baseComment + "\n" + hint;
             }
         };
@@ -43,7 +43,7 @@ public class RecordConfigs {
                 String baseComment = super.getComment();
                 File effectiveDir = ScreenRecorder.getInstance().getEffectiveVideoDir();
                 String pathStr = (effectiveDir != null) ? effectiveDir.getAbsolutePath() : "./video";
-                String hint = I18n.translate("recordmc.config.comment.custom_video_dir.current", pathStr);
+                String hint = I18nCompat.translate("recordmc.config.comment.custom_video_dir.current", pathStr);
                 return baseComment + "\n" + hint;
             }
         };

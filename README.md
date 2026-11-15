@@ -16,7 +16,10 @@ It allows you to record crisp, high-framerate gameplay directly from within Mine
 
 | Minecraft | JAR | Fabric Loader | Java |
 | --- | --- | --- | --- |
-| 1.21.11 | `recordmc-1.0.0+1.21.11.jar` | 0.15.11 or newer | 21 or newer |
+| 26.3 | `RecordMC-1.0.0+26.3.jar` | 0.19.5 or newer | 25 or newer |
+| 26.2 | `RecordMC-1.0.0+26.2.jar` | 0.19.3 or newer | 25 or newer |
+| 26.1 | `RecordMC-1.0.0+26.1.jar` | 0.18.4 or newer | 25 or newer |
+| 1.21.11 | `RecordMC-1.0.0+1.21.11.jar` | 0.15.11 or newer | 21 or newer |
 | 1.21.10 | `recordmc-1.0.0+1.21.10.jar` | 0.15.11 or newer | 21 or newer |
 | 1.21.9 | `recordmc-1.0.0+1.21.9.jar` | 0.15.11 or newer | 21 or newer |
 | 1.21.8 | `recordmc-1.0.0+1.21.8.jar` | 0.15.11 or newer | 21 or newer |

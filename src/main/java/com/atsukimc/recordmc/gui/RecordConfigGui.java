@@ -1,5 +1,6 @@
 package com.atsukimc.recordmc.gui;
 
+import com.atsukimc.recordmc.compat.I18nCompat;
 import com.atsukimc.recordmc.config.RecordConfigHandler;
 import com.atsukimc.recordmc.config.RecordConfigs;
 import fi.dy.masa.malilib.config.IConfigBase;
@@ -7,14 +8,20 @@ import fi.dy.masa.malilib.gui.GuiConfigsBase;
 import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
+//? if >=26.1 {
+/*import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.Style;
+*///?} else {
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.resource.language.I18n;
 import net.minecraft.text.Style;
 //? if <=1.16.1 {
 /*import net.minecraft.text.StringRenderable;
 *///?} else {
 import net.minecraft.text.StringVisitable;
+//?}
 //?}
 
 import java.util.List;
@@ -30,7 +37,7 @@ public class RecordConfigGui extends GuiConfigsBase {
     }
 
     public RecordConfigGui(Screen parent) {
-        super(10, 50, "recordmc", parent, I18n.translate("recordmc.gui.title.config"));
+        super(10, 50, "recordmc", parent, I18nCompat.translate("recordmc.gui.title.config"));
         this.setParent(parent);
         this.setHoverInfoProvider(this::getWrappedHoverInfo);
     }
@@ -70,6 +77,23 @@ public class RecordConfigGui extends GuiConfigsBase {
     }
 
     private int getMaxLabelWidth() {
+        //? if >=26.1 {
+        /*if (this.font == null) {
+            return 130;
+        }
+
+        int max = 0;
+        for (ConfigOptionWrapper wrapper : this.getConfigs()) {
+            if (wrapper.getType() == ConfigOptionWrapper.Type.CONFIG) {
+                String label = wrapper.getConfig().getConfigGuiDisplayName();
+                int w = this.font.width(label);
+                if (w > max) {
+                    max = w;
+                }
+            }
+        }
+        return max > 0 ? max : 130;
+        *///?} else {
         MinecraftClient mc = this.client != null ? this.client : MinecraftClient.getInstance();
         if (mc == null || mc.textRenderer == null) {
             return 130;
@@ -86,6 +110,7 @@ public class RecordConfigGui extends GuiConfigsBase {
             }
         }
         return max > 0 ? max : 130;
+        //?}
     }
 
     /**
@@ -97,13 +122,40 @@ public class RecordConfigGui extends GuiConfigsBase {
             return null;
         }
 
+        // ツールチップが画面端を突き抜けないよう最大幅を計算（画面幅 - 40px、最大280px）
+        int maxTooltipWidth = Math.max(160, Math.min(280, this.width - 40));
+
+        //? if >=26.1 {
+        /*if (this.font == null) {
+            return comment;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        String[] originalLines = comment.split("\n");
+        boolean first = true;
+
+        for (String line : originalLines) {
+            if (line.isEmpty()) {
+                sb.append("\n");
+                continue;
+            }
+
+            List<FormattedText> wrappedLines = this.font.getSplitter().splitLines(line, maxTooltipWidth, Style.EMPTY);
+            for (FormattedText wrapped : wrappedLines) {
+                if (!first) {
+                    sb.append("\n");
+                }
+                sb.append(wrapped.getString());
+                first = false;
+            }
+        }
+
+        return sb.toString();
+        *///?} else {
         MinecraftClient mc = this.client != null ? this.client : MinecraftClient.getInstance();
         if (mc == null || mc.textRenderer == null) {
             return comment;
         }
-
-        // ツールチップが画面端を突き抜けないよう最大幅を計算（画面幅 - 40px、最大280px）
-        int maxTooltipWidth = Math.max(160, Math.min(280, this.width - 40));
 
         StringBuilder sb = new StringBuilder();
         String[] originalLines = comment.split("\n");
@@ -137,6 +189,7 @@ public class RecordConfigGui extends GuiConfigsBase {
         }
 
         return sb.toString();
+        //?}
     }
 
     @Override
@@ -199,7 +252,7 @@ public class RecordConfigGui extends GuiConfigsBase {
         }
 
         public String getDisplayName() {
-            return I18n.translate(this.translationKey);
+            return I18nCompat.translate(this.translationKey);
         }
     }
 }

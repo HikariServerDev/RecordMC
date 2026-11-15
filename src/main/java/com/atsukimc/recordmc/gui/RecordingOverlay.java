@@ -2,6 +2,11 @@ package com.atsukimc.recordmc.gui;
 
 import com.atsukimc.recordmc.config.RecordConfigs;
 import com.atsukimc.recordmc.recorder.ScreenRecorder;
+//? if >=26.1 {
+/*import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+*///?} else {
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 //? if >=1.20 {
@@ -12,13 +17,71 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.util.math.MatrixStack;
 //?}
+//?}
 
 /**
  * 録画中に画面右上に赤丸インジケーターと経過時間を描画するオーバーレイ
  */
 public class RecordingOverlay {
 
-    //? if >=1.21.6 {
+    //? if >=26.1 {
+    /*public static void render(GuiGraphicsExtractor extractor) {
+        ScreenRecorder recorder = ScreenRecorder.getInstance();
+        if (!recorder.isRecording() || !RecordConfigs.Generic.SHOW_INDICATOR.getBooleanValue()) {
+            return;
+        }
+
+        Minecraft client = Minecraft.getInstance();
+        if (client == null || client.getWindow() == null) {
+            return;
+        }
+
+        int scaledWidth = client.getWindow().getGuiScaledWidth();
+        Font font = client.font;
+        if (font == null) {
+            return;
+        }
+
+        long elapsedMillis = System.currentTimeMillis() - recorder.getRecordingStartTime();
+        long totalSeconds = Math.max(0, elapsedMillis / 1000);
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+
+        String timeStr;
+        if (hours > 0) {
+            timeStr = String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            timeStr = String.format("%02d:%02d", minutes, seconds);
+        }
+
+        String label = "REC  " + timeStr;
+        int textWidth = font.width(label);
+        int padding = 4;
+        int boxWidth = textWidth + 24;
+        int boxHeight = font.lineHeight + padding * 2;
+
+        int x = scaledWidth - boxWidth - 10;
+        int y = 10;
+
+        // 半透明黒背景
+        extractor.fill(x, y, x + boxWidth, y + boxHeight, 0x80000000);
+
+        // 赤丸点滅
+        boolean blinkOn = (elapsedMillis % 1000) < 600;
+        int dotColor = blinkOn ? 0xFFFF2222 : 0x66AA0000;
+
+        int dotX = x + padding + 3;
+        int dotY = y + (boxHeight - 6) / 2;
+        extractor.fill(dotX, dotY, dotX + 6, dotY + 6, dotColor);
+        if (blinkOn) {
+            extractor.fill(dotX + 1, dotY + 1, dotX + 5, dotY + 5, 0xFFFF5555);
+        }
+
+        // テキスト
+        extractor.text(font, label, dotX + 10, y + padding + 1, 0xFFFFFFFF, true);
+    }
+    *///?} elif >=1.21.6 {
     /*public static void render(DrawContext context) {
         ScreenRecorder recorder = ScreenRecorder.getInstance();
         if (!recorder.isRecording() || !RecordConfigs.Generic.SHOW_INDICATOR.getBooleanValue()) {

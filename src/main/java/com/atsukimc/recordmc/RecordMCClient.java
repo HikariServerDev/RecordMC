@@ -2,7 +2,11 @@ package com.atsukimc.recordmc;
 
 import com.atsukimc.recordmc.input.InputHandler;
 import com.atsukimc.recordmc.recorder.ScreenRecorder;
-//? if >=1.21.6 {
+//? if >=26.1 {
+/*import com.atsukimc.recordmc.gui.RecordingOverlay;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.minecraft.resources.Identifier;
+*///?} elif >=1.21.6 {
 /*import com.atsukimc.recordmc.gui.RecordingOverlay;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 *///?}
@@ -37,7 +41,12 @@ public class RecordMCClient implements ClientModInitializer {
             }
         });
 
-        //? if >=1.21.6 {
+        //? if >=26.1 {
+        /*// HUD オーバーレイ描画
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "indicator"), (extractor, deltaTracker) -> {
+            RecordingOverlay.render(extractor);
+        });
+        *///?} elif >=1.21.6 {
         /*// HUD オーバーレイ描画
         HudRenderCallback.EVENT.register((context, tickCounter) -> {
             RecordingOverlay.render(context);

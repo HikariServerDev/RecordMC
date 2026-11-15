@@ -10,7 +10,8 @@ pluginManagement {
 
 plugins {
     id("dev.kikugie.stonecutter") version "0.9.7"
-    id("fabric-loom") version "1.17.19" apply false
+    id("fabric-loom") version "1.17.21" apply false
+    id("net.fabricmc.fabric-loom") version "1.17.21" apply false
 }
 
 stonecutter {
@@ -18,7 +19,8 @@ stonecutter {
         versions(
             "1.16.1", "1.18", "1.18.1", "1.18.2", "1.19.4",
             "1.20", "1.20.1", "1.20.6",
-            "1.21", "1.21.1", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11"
+            "1.21", "1.21.1", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11",
+            "26.1", "26.2", "26.3"
         )
         vcsVersion = "1.18.2"
     }

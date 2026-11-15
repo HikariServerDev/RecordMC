@@ -122,6 +122,15 @@ public class FFmpegManager {
 
             // 2. ゲーム実行ディレクトリからの相対パス
             try {
+                //? if >=26.1 {
+                /*net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
+                if (client != null && client.gameDirectory != null) {
+                    File relativeFile = new File(client.gameDirectory, trimmed);
+                    if (relativeFile.exists() && relativeFile.canExecute()) {
+                        return relativeFile.getAbsolutePath();
+                    }
+                }
+                *///?} else {
                 net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
                 if (client != null && client.runDirectory != null) {
                     File relativeFile = new File(client.runDirectory, trimmed);
@@ -129,6 +138,7 @@ public class FFmpegManager {
                         return relativeFile.getAbsolutePath();
                     }
                 }
+                //?}
             } catch (Throwable t) {
                 LOGGER.debug("Could not resolve relative FFmpeg path against runDirectory: {}", t.getMessage());
             }
